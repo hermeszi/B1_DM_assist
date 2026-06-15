@@ -22,7 +22,8 @@
 5. Edit if needed, **Save** → it appears in the session log.
 6. Write a **journal note** of what actually happened → also saved to the log, and fed into the context of future generations.
 
-[Add screenshots / a GIF here. Strong beat: generate loot and show it referencing a recent event from the campaign state — versus the generic result a static table would give.]
+<img width="2026" height="1190" alt="B1_DM_assist" src="https://github.com/user-attachments/assets/961eedf2-f7da-4e6d-9915-c2e97483b475" />
+
 
 ---
 
