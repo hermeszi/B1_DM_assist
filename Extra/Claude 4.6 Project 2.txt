@@ -1,0 +1,563 @@
+# B1 Builders: Project 2 — DM's Oracle: Context-Aware DnD Game Master Assistant
+
+## ✅ Verdict: Great Fit for Project 1 (Individual Use)
+
+This maps perfectly to your two-project split:
+
+| B1 Requirement | Your Project |
+|---|---|
+| **Project 1: Individual use** | **DM's Oracle** — one DM's personal tool during sessions |
+| **Project 2: Team/org use** | **Enrichment Reporter** — multiple instructors, shared student data |
+
+Why this idea works well:
+
+- **Real pain point** — the "Forever DM" problem is universally understood in the TTRPG community
+- **AI is the core feature**, not an add-on — context-aware generation is impossible without it
+- **Scalable complexity** — you can show a simple prototype but describe a rich product vision
+- **Fun to demo** — interviewers will enjoy seeing it in action, even if they don't play DnD
+- **Clear before/after** — random tables (context-blind) vs. your app (context-aware)
+
+---
+
+## 🎯 Core Concept: The Context Window
+
+The key differentiator from existing random tables/generators:
+
+```
+RANDOM TABLE (existing):                YOUR APP:
+┌─────────────────────┐                ┌──────────────────────────────────┐
+│ Roll d100 → "You    │                │ The party just defeated a goblin │
+│ find a ruby worth   │                │ warband in the Silverfen Swamp.  │
+│ 50gp"               │                │ They're level 3, low on health.  │
+│                     │                │ The rogue has been looking for   │
+│ (No idea about      │                │ her missing brother.             │
+│  party, story,      │                │                                  │
+│  tone, or stakes)   │                │ → Loot: Among the goblin chief's │
+│                     │                │   belongings, a crumpled letter  │
+│                     │                │   bearing the rogue's family     │
+│                     │                │   crest. 45gp in mixed coins.    │
+└─────────────────────┘                └──────────────────────────────────┘
+```
+
+---
+
+## 🏗️ Recommended Tech Stack (2-Hour Prototype)
+
+| Layer | Choice | Why |
+|-------|--------|-----|
+| **Frontend** | Single HTML page + vanilla JS | Fast, no build step, session-focused UI |
+| **Backend** | Python **Flask** | Consistent with Project 1, minimal setup |
+| **Database** | **SQLite** | Store campaign context, session logs, NPCs, encounters |
+| **AI** | **OpenAI API** (GPT-4o-mini) | Creative text generation with structured JSON output |
+| **State Management** | Server-side session context | Campaign state sent with each AI request |
+
+---
+
+## 📐 Application Flow
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        DM'S ORACLE                                │
+│                                                                   │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │ CAMPAIGN SETUP (one-time / editable)                        │ │
+│  │  • Campaign name, setting, tone (dark/heroic/comedic)       │ │
+│  │  • Party members (name, class, level, key traits/goals)     │ │
+│  │  • Current story arc summary                                │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                          │                                        │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │ SESSION VIEW (main interface during play)                   │ │
+│  │                                                             │ │
+│  │  📍 Context Bar: "Session 4 · Silverfen Swamp · Party Lv3" │ │
+│  │                                                             │ │
+│  │  ┌─────────────┐ ┌──────────────┐ ┌──────────────────┐     │ │
+│  │  │ 🎲 GENERATE │ │ 📝 SESSION   │ │ 📖 CAMPAIGN      │     │ │
+│  │  │             │ │    LOG       │ │    JOURNAL       │     │ │
+│  │  │ Quick Btns: │ │              │ │                  │     │ │
+│  │  │ • Loot      │ │ Auto-logged  │ │ NPCs met         │     │ │
+│  │  │ • Encounter │ │ entries from │ │ Locations visited │     │ │
+│  │  │ • NPC Talk  │ │ generations  │ │ Key events       │     │ │
+│  │  │ • Describe  │ │ + DM notes   │ │ Unresolved hooks │     │ │
+│  │  │ • Plot Hook │ │              │ │                  │     │ │
+│  │  │ • Wild Card │ │              │ │                  │     │ │
+│  │  └──────┬──────┘ └──────────────┘ └──────────────────┘     │ │
+│  │         │                                                   │ │
+│  │         ▼                                                   │ │
+│  │  ┌─────────────────────────────────────────────────┐        │ │
+│  │  │ GENERATION PANEL                                │        │ │
+│  │  │                                                 │        │ │
+│  │  │ [Optional extra context: __________________ ]   │        │ │
+│  │  │ e.g. "party is searching the goblin camp"       │        │ │
+│  │  │                                                 │        │ │
+│  │  │ ┌─────────────────────────────────────────┐     │        │ │
+│  │  │ │ 🎲 Generated Result:                    │     │        │ │
+│  │  │ │                                         │     │        │ │
+│  │  │ │ "Among the crude bedrolls, Kira spots   │     │        │ │
+│  │  │ │  a leather pouch containing 32 silver    │     │        │ │
+│  │  │ │  pieces and a tarnished locket. Inside   │     │        │ │
+│  │  │ │  the locket: a tiny portrait that bears  │     │        │ │
+│  │  │ │  an unsettling resemblance to the        │     │        │ │
+│  │  │ │  merchant they met in Thornwall..."       │     │        │ │
+│  │  │ └─────────────────────────────────────────┘     │        │ │
+│  │  │                                                 │        │ │
+│  │  │ [🔄 Reroll] [✅ Accept & Log] [✏️ Edit] [🗑️]   │        │ │
+│  │  └─────────────────────────────────────────────────┘        │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🗄️ Data Model
+
+```sql
+-- campaigns table
+CREATE TABLE campaigns (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    setting TEXT,           -- "High fantasy medieval", "Steampunk noir", etc.
+    tone TEXT,              -- "dark", "heroic", "comedic", "gritty"
+    current_arc TEXT,       -- summary of current storyline
+    world_notes TEXT,       -- freeform world-building notes
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- party_members table
+CREATE TABLE party_members (
+    id INTEGER PRIMARY KEY,
+    campaign_id INTEGER REFERENCES campaigns(id),
+    name TEXT NOT NULL,
+    race TEXT,
+    class TEXT,
+    level INTEGER DEFAULT 1,
+    background TEXT,        -- brief backstory
+    goals TEXT,             -- personal quests, motivations
+    traits TEXT             -- personality, flaws, bonds
+);
+
+-- npcs table (auto-populated when NPCs are generated/logged)
+CREATE TABLE npcs (
+    id INTEGER PRIMARY KEY,
+    campaign_id INTEGER REFERENCES campaigns(id),
+    name TEXT NOT NULL,
+    description TEXT,
+    role TEXT,              -- "ally", "enemy", "neutral", "unknown"
+    location TEXT,
+    notes TEXT,
+    first_appeared TEXT     -- session reference
+);
+
+-- session_log table (the running record)
+CREATE TABLE session_log (
+    id INTEGER PRIMARY KEY,
+    campaign_id INTEGER REFERENCES campaigns(id),
+    session_number INTEGER,
+    timestamp TEXT DEFAULT (datetime('now')),
+    entry_type TEXT,        -- "generation", "dm_note", "event", "npc_met"
+    generation_type TEXT,   -- "loot", "encounter", "npc_dialogue", "description", "plot_hook", "wild_card"
+    context_given TEXT,     -- what the DM typed as extra context
+    content TEXT,           -- the generated or noted content
+    accepted INTEGER DEFAULT 1  -- was this used in the game?
+);
+
+-- locations table
+CREATE TABLE locations (
+    id INTEGER PRIMARY KEY,
+    campaign_id INTEGER REFERENCES campaigns(id),
+    name TEXT NOT NULL,
+    description TEXT,
+    visited INTEGER DEFAULT 0,
+    notes TEXT
+);
+```
+
+---
+
+## 🧠 AI Prompt Architecture
+
+This is the **most important part** — the prompt engineering that makes generations context-aware.
+
+### System Prompt (Base)
+
+```python
+SYSTEM_PROMPT = """You are a creative Dungeon Master's assistant for a tabletop RPG.
+You generate content that is CONTEXTUALLY APPROPRIATE to the ongoing campaign.
+
+RULES:
+1. Generated content must reference or connect to existing campaign elements 
+   (NPCs, locations, party goals, story arcs) when natural to do so.
+2. Not every generation needs a plot connection — sometimes loot is just loot.
+   Aim for ~30% of generations to have a story hook.
+3. Match the campaign's TONE setting strictly.
+4. Content must be appropriate for the party's LEVEL.
+5. Results should surprise the DM — you are creating the unexpected moments 
+   that make DMing feel like playing.
+6. Be specific and vivid, never generic.
+7. Return structured JSON as specified per generation type.
+"""
+```
+
+### Per-Type Prompt Templates
+
+```python
+GENERATION_PROMPTS = {
+    "loot": {
+        "instruction": """Generate a loot find. Return JSON:
+{
+  "description": "Narrative description of what they find (2-3 sentences, vivid)",
+  "items": [{"name": "...", "value": "...", "magical": bool, "notes": "..."}],
+  "hidden_hook": "Optional story connection or null"
+}
+Level-appropriate: low levels = copper/silver/minor items. High levels = gold/gems/magical items.
+Sometimes include something personal, mysterious, or connected to the campaign.""",
+    },
+
+    "encounter": {
+        "instruction": """Generate a random encounter. Return JSON:
+{
+  "description": "Scene-setting description (2-3 sentences)",
+  "creatures": [{"name": "...", "count": N, "cr": "...", "behavior": "..."}],
+  "twist": "What makes this encounter different from a standard fight",
+  "resolution_options": ["fight", "negotiate", "flee", "other creative option"],
+  "connection": "How this might tie to the campaign story, or null"
+}
+Not every encounter is combat. Social encounters, environmental hazards, 
+moral dilemmas, and strange discoveries are all valid.""",
+    },
+
+    "npc_dialogue": {
+        "instruction": """Generate NPC dialogue/response. The DM will provide 
+the situation and what the party said or did. Return JSON:
+{
+  "npc_name": "Name (use existing NPC if specified, or create new)",
+  "demeanor": "How the NPC is feeling/acting",
+  "dialogue": "What the NPC says (in character, with speech mannerisms)",
+  "body_language": "Physical description of how they react",
+  "hidden_motive": "What the NPC actually wants (DM eyes only)",
+  "follow_up_options": ["possible direction 1", "possible direction 2"]
+}""",
+    },
+
+    "description": {
+        "instruction": """Generate atmospheric description text that the DM can 
+read aloud or paraphrase. Return JSON:
+{
+  "read_aloud": "Boxed text the DM can read directly to players (3-5 sentences, 
+                  sensory details: sight, sound, smell, feel)",
+  "dm_notes": "Details only the DM knows about this scene",
+  "interactive_elements": ["thing players might investigate 1", "thing 2", "thing 3"]
+}""",
+    },
+
+    "plot_hook": {
+        "instruction": """Generate a plot hook or story development. This should 
+advance or complicate the current story arc, or introduce a compelling side quest. 
+Return JSON:
+{
+  "hook": "The event, revelation, or encounter that creates the hook",
+  "delivery": "How this information reaches the party",
+  "stakes": "Why this matters",
+  "connections": ["existing campaign element 1", "element 2"],
+  "possible_outcomes": ["if party pursues", "if party ignores"]
+}""",
+    },
+
+    "wild_card": {
+        "instruction": """Generate something completely unexpected but campaign-appropriate.
+This is the DM's "I want to be surprised" button. Could be anything: 
+a strange event, a callback to something forgotten, a twist, a comedic moment, 
+a dramatic revelation, a mysterious omen. Return JSON:
+{
+  "event": "What happens (vivid, surprising)",
+  "type": "comedic|dramatic|mysterious|dangerous|heartwarming|surreal",
+  "impact": "How this might affect the session",
+  "dm_tip": "Suggestion for how to play this moment"
+}""",
+    },
+}
+```
+
+### Context Assembly Function
+
+```python
+def build_context_payload(campaign_id, generation_type, extra_context=""):
+    """Assemble all relevant campaign context for the AI request."""
+    campaign = get_campaign(campaign_id)
+    party = get_party_members(campaign_id)
+    recent_log = get_recent_session_log(campaign_id, limit=10)
+    npcs = get_npcs(campaign_id)
+    locations = get_locations(campaign_id)
+
+    context = f"""
+CAMPAIGN: {campaign['name']}
+SETTING: {campaign['setting']}
+TONE: {campaign['tone']}
+CURRENT ARC: {campaign['current_arc']}
+
+PARTY MEMBERS:
+{format_party(party)}
+
+KNOWN NPCs:
+{format_npcs(npcs)}
+
+KNOWN LOCATIONS:
+{format_locations(locations)}
+
+RECENT SESSION EVENTS (last 10):
+{format_log(recent_log)}
+
+DM'S CURRENT CONTEXT: {extra_context if extra_context else "No additional context provided."}
+"""
+    return context
+```
+
+---
+
+## ⏱️ 2-Hour Build Plan
+
+| Time | Task | Details |
+|------|------|---------|
+| **0:00 – 0:10** | Setup | Repo, Flask, SQLite, create all tables, seed one sample campaign with party |
+| **0:10 – 0:35** | Backend Routes | `GET /campaign`, `POST /campaign/setup`, `POST /generate/<type>`, `POST /log`, `GET /journal`, `GET /npcs` |
+| **0:35 – 1:05** | Frontend | Three-panel layout: Generator (left), Session Log (center), Campaign Journal (right). 6 generation buttons. Output display with Accept/Reroll/Edit. |
+| **1:05 – 1:30** | AI Integration | Context assembly, generation prompts, JSON parsing, connect to buttons |
+| **1:30 – 1:45** | Session Flow | Auto-logging accepted generations, DM quick-note input, NPC auto-tracking |
+| **1:45 – 1:55** | Test & Polish | Run through a mini mock session, fix display issues, test all 6 gen types |
+| **1:55 – 2:00** | Docs | README.md, docs/ai-dev/README.md |
+
+---
+
+## 📁 Project Structure (B1-Compliant)
+
+```
+dm-oracle/
+├── README.md
+├── LICENSE
+├── .gitignore
+├── requirements.txt              # flask, openai, python-dotenv
+├── src/
+│   ├── app.py                    # Flask app, all routes
+│   ├── database.py               # SQLite setup, CRUD operations
+│   ├── ai_service.py             # Prompt templates, context builder, API calls
+│   ├── templates/
+│   │   ├── index.html            # Main session view (3-panel)
+│   │   └── setup.html            # Campaign/party setup form
+│   └── static/
+│       ├── style.css             # Dark theme (fits DnD aesthetic)
+│       └── app.js                # Button handlers, fetch, UI updates
+├── tests/
+│   ├── test_ai_service.py        # Context assembly, prompt formatting
+│   ├── test_database.py          # CRUD for all tables
+│   └── test_routes.py            # Endpoint tests
+├── docs/
+│   └── ai-dev/
+│       └── README.md
+├── scripts/
+│   └── seed_campaign.py          # Seeds a sample campaign for demo
+├── data/
+│   └── sample_campaign.json      # "The Thornwall Chronicles" demo data
+└── Extra/
+    └── chat_logs/
+```
+
+---
+
+## 🎮 Demo Scenario (For Video & Interview)
+
+Pre-seed this campaign so the demo is compelling:
+
+```json
+{
+  "campaign": {
+    "name": "The Thornwall Chronicles",
+    "setting": "Low-magic medieval fantasy, frontier town surrounded by ancient forest",
+    "tone": "gritty",
+    "current_arc": "The town's well water has been turning black. Livestock are dying. The mayor blames the druids in the Oldwood, but the party suspects the new mining operation run by the Valdris Trading Company."
+  },
+  "party": [
+    {
+      "name": "Kira Dunwood",
+      "race": "Half-elf", "class": "Rogue", "level": 3,
+      "background": "Searching for her missing brother who was last seen working for Valdris Trading Co.",
+      "goals": "Find brother, expose corruption",
+      "traits": "Suspicious of authority, soft spot for kids, picks locks when nervous"
+    },
+    {
+      "name": "Brother Aldric",
+      "race": "Human", "class": "Cleric", "level": 3,
+      "background": "Sent by his temple to investigate reports of unnatural blight.",
+      "goals": "Purify the corruption, protect the innocent",
+      "traits": "Gentle but firm, keeps a journal, terrible liar"
+    },
+    {
+      "name": "Grom Ironfist",
+      "race": "Dwarf", "class": "Fighter", "level": 3,
+      "background": "Ex-miner who quit Valdris after 'seeing things' in the deep tunnels.",
+      "goals": "Get proof of what Valdris is doing underground",
+      "traits": "Blunt, loyal, drinks too much, nightmares about the tunnels"
+    }
+  ],
+  "npcs": [
+    {"name": "Mayor Elara Thornwall", "role": "neutral", "description": "Pragmatic, protective of the town, possibly being bribed by Valdris"},
+    {"name": "Fenwick", "role": "ally", "description": "Old druid, lives at forest edge, knows more than he says"},
+    {"name": "Castellan Dyre", "role": "enemy", "description": "Valdris company enforcer, charming but ruthless"}
+  ]
+}
+```
+
+### Demo Script (walk through in video):
+
+> **Step 1:** Show the campaign setup — "Here's our campaign context..."
+> 
+> **Step 2:** "The party just entered the Valdris mine. Let me generate a **description**."
+> → AI produces atmospheric mine description referencing the black water, strange sounds
+> 
+> **Step 3:** "They go deeper. Let me roll a **random encounter**."
+> → AI generates encounter that connects to Grom's backstory ("the things in the tunnels")
+> 
+> **Step 4:** "They find a body. **Loot** check."
+> → Loot includes a letter mentioning Kira's brother's name
+> 
+> **Step 5:** "They confront Castellan Dyre. What does he say? **NPC Dialogue**."
+> → Context: "party accuses him of poisoning the well"
+> → AI generates in-character dialogue with hidden motive
+> 
+> **Step 6:** Hit **Wild Card** — "Surprise me."
+> → Something unexpected that weaves in existing threads
+
+---
+
+## 🧪 How to Test
+
+### Functional Tests
+
+| # | Test Case | Verify |
+|---|-----------|--------|
+| 1 | Campaign setup saves | Create campaign → reload → data persists |
+| 2 | Party members save | Add 3 members → all appear in campaign view |
+| 3 | Each generation type returns valid JSON | Click all 6 buttons → output renders correctly |
+| 4 | Context is included in generation | Generated loot/encounters reference party names, campaign elements |
+| 5 | Accept logs to session | Click Accept → entry appears in Session Log panel |
+| 6 | Reroll produces different result | Click Reroll → new content (not identical) |
+| 7 | DM note saves | Type quick note → appears in session log |
+| 8 | NPC auto-tracked | Generate NPC dialogue for new NPC → appears in NPC list |
+
+### Quality Tests
+
+| # | Test Case | Verify |
+|---|-----------|--------|
+| 9 | Tone consistency | Set tone to "comedic" → generations are lighter. Set to "gritty" → darker. |
+| 10 | Level-appropriate | Level 1 party → no legendary items. Level 15 → no trivial encounters. |
+| 11 | Context awareness improves over time | After 5+ log entries, generations reference past events |
+| 12 | Wild Card is actually surprising | Run 5 wild cards → at least 3 are genuinely different/unexpected |
+
+### Automated Tests
+
+```python
+# tests/test_ai_service.py
+def test_context_assembly_includes_all_sections():
+    """Context payload contains campaign, party, NPCs, log."""
+    context = build_context_payload(campaign_id=1, generation_type="encounter")
+    assert "CAMPAIGN:" in context
+    assert "PARTY MEMBERS:" in context
+    assert "KNOWN NPCs:" in context
+    assert "RECENT SESSION EVENTS:" in context
+
+def test_generation_prompt_varies_by_type():
+    """Each generation type uses its specific prompt template."""
+    for gen_type in ["loot", "encounter", "npc_dialogue", "description", "plot_hook", "wild_card"]:
+        prompt = GENERATION_PROMPTS[gen_type]["instruction"]
+        assert "Return JSON" in prompt
+
+# tests/test_database.py
+def test_session_log_ordering():
+    """Session log entries return in chronological order."""
+    add_log_entry(campaign_id=1, entry_type="generation", content="First")
+    add_log_entry(campaign_id=1, entry_type="generation", content="Second")
+    log = get_recent_session_log(campaign_id=1, limit=2)
+    assert log[0]["content"] == "Second"  # most recent first
+
+def test_npc_creation():
+    """NPCs can be added and retrieved by campaign."""
+    add_npc(campaign_id=1, name="Test NPC", role="ally")
+    npcs = get_npcs(campaign_id=1)
+    assert any(n["name"] == "Test NPC" for n in npcs)
+```
+
+---
+
+## 🎨 UI Sketch (Dark Theme)
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  ⚔️ DM's Oracle          The Thornwall Chronicles · Session 4       │
+│  ─────────────────────────────────────────────────────────────────── │
+│                                                                      │
+│  ┌─ GENERATE ──────┐  ┌─ OUTPUT / SESSION LOG ──────────────────┐   │
+│  │                  │  │                                         │   │
+│  │  [🪙 Loot     ] │  │  ▼ 14:32 — Encounter (accepted)        │   │
+│  │  [⚔️ Encounter] │  │  Three fungal crawlers emerge from the  │   │
+│  │  [🗣️ NPC Talk ] │  │  mine's drainage tunnel. Their spores   │   │
+│  │  [🏔️ Describe ] │  │  glow the same sickly purple as the     │   │
+│  │  [🪝 Plot Hook] │  │  tainted well water...                  │   │
+│  │  [🎲 Wild Card] │  │                                         │   │
+│  │                  │  │  ▼ 14:28 — DM Note                     │   │
+│  │  ──────────────  │  │  Party entered mine through east shaft. │   │
+│  │                  │  │  Grom is visibly nervous.               │   │
+│  │  Extra context:  │  │                                         │   │
+│  │  ┌────────────┐  │  │  ▼ 14:25 — Description (accepted)      │   │
+│  │  │ party is   │  │  │  The tunnel narrows as you descend...  │   │
+│  │  │ in the mine│  │  │                                         │   │
+│  │  └────────────┘  │  ├─────────────────────────────────────────┤   │
+│  │                  │  │  📖 JOURNAL  │  👥 NPCs  │  🗺️ Places  │   │
+│  │  [✨ Generate ]  │  │  (tabs for campaign reference)          │   │
+│  │                  │  │                                         │   │
+│  └──────────────────┘  └─────────────────────────────────────────┘   │
+│                                                                      │
+│  Quick Note: [________________________________] [Add Note]           │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔑 Key Decisions to Document
+
+| Decision | Options | Choice | Rationale |
+|---|---|---|---|
+| Single campaign vs multi | Multi-campaign support, single | Single (with ID for future multi) | 2-hour constraint; schema supports multi already |
+| Context window management | Send everything, send recent only, summarize | Send recent 10 + full party/NPC list | Balances context quality vs token cost |
+| Generation output format | Plain text, Markdown, JSON | JSON → rendered as styled HTML | Structured data allows logging, reuse, and clean display |
+| NPC tracking | Manual only, auto-extract | Auto-extract from accepted NPC dialogues + manual | Reduces DM bookkeeping, core value proposition |
+| Session persistence | In-memory, localStorage, SQLite | SQLite | Campaign data must persist across sessions; SQLite is already our stack |
+
+---
+
+## 📊 Both Projects at a Glance
+
+| Aspect | Project 1: Enrichment Reporter | Project 2: DM's Oracle |
+|---|---|---|
+| **B1 Category** | Team/Org use | Individual use |
+| **Users** | Multiple instructors, shared data | Single DM |
+| **AI Role** | Structured report generation | Creative content generation |
+| **Data Model** | Students, entries, instructors | Campaign, party, NPCs, session log |
+| **Key AI Skill** | Prompt → structured professional output | Prompt → creative contextual output |
+| **Shared Stack** | Flask + SQLite + vanilla JS + OpenAI | Same |
+| **Differentiator** | Shows practical business tool | Shows creative AI application |
+
+This contrast is **ideal** — it shows the evaluators you can apply AI to both structured/professional and creative/open-ended domains.
+
+---
+
+## 🔮 Future Enhancements (Mention in Demo)
+
+1. **Combat tracker** — initiative order, HP tracking, condition reminders
+2. **Map integration** — generate location maps via image AI
+3. **Voice mode** — DM speaks situation, AI responds (hands-free during session)
+4. **Player view** — share descriptions/images to a player-facing screen
+5. **Campaign export** — generate a full adventure recap/story from session logs
+6. **Community templates** — share campaign settings and prompt presets
+
+---
+
+Want me to scaffold the actual code for either project next? I'd recommend starting with whichever you find more motivating — the code structure for both is very similar (Flask + SQLite + OpenAI + single-page HTML), so building one will make the second faster.

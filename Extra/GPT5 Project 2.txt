@@ -1,0 +1,457 @@
+Love this as your “individual” project. It’s focused, clearly AI-assisted, and you can get a delightful, demo-ready MVP in ~2 hours that still shows process, prompting, and fullstack skills.
+
+Project B (Individual): Dungeon Muse — Context‑aware surprise generator for DMs
+
+Goal for MVP (2 hours)
+- Keep minimal but impressive:
+  - Create/edit “Campaign Context” (party avg level, location/biome, tone, recent events).
+  - One-click generators:
+    - Loot
+    - Encounter
+    - NPC response
+    - Descriptive flavor text
+  - Accept/Reroll workflow: preview → Accept to log → becomes canon for next generations.
+  - Auto-journal: accepted outputs + quick notes → “Session Summary” button → Markdown export.
+
+Why this fits B1 “individual”
+- Fullstack: SPA frontend + small backend + local DB (SQLite).
+- Clear AI use: combine light-weight random tables with LLM to contextualize and write.
+- Explainable process: seed tables → filtering/weighting → schema’d LLM generation → persistence.
+- Easy to demo in ≤5 minutes.
+
+Architecture (fastest path)
+- Frontend: Single HTML page with vanilla JS (or Lit/Tailwind if you prefer). No build step required.
+- Backend: FastAPI (Python) with endpoints:
+  - POST `/gen/loot|encounter|npc|description` → structured JSON
+  - POST `/context/set`, GET `/context/get`
+  - POST `/journal/add`, GET `/journal/list`
+  - POST `/summary` → returns Markdown session recap
+- Data: SQLite (`sqlite3` + `sqlalchemy`) with tables for `campaign`, `session`, `entity`, `journal`.
+- Random base tables: ship tiny JSONs in `data/`:
+  - `encounters.json` with monster options tagged by biome, CR range
+  - `loot.json` with rarity, tags
+  - `names.json` pools for NPCs
+- AI: One LLM call per generator to weave filtered picks into coherent, context-aware output with a strict JSON schema and low temperature for reliability.
+
+MVP user flow
+1) DM creates/edits campaign context:
+   - Party avg level, size
+   - Biome/location
+   - Tone (grim, whimsical, heroic)
+   - Recent events (free text)
+   - Known NPCs/factions (select or paste)
+2) DM clicks a generator button:
+   - Backend filters a small candidate list by tags (e.g., CR ≈ party level, biome match)
+   - Passes context + picks to LLM with a JSON schema prompt
+   - Returns a preview card (title, narrative, mechanics/hooks, tags)
+3) DM accepts or rerolls:
+   - Accept persists card to journal and updates “canon”: e.g., new NPC into `entities`
+4) Anytime: “Session Summary” compiles accepted cards + notes into Markdown.
+
+Data model (SQLite, minimal)
+- `campaign(id, name, party_level, party_size, biome, tone, recent_events_text, created_at, updated_at)`
+- `entity(id, campaign_id, type, name, summary_json, tags_csv, created_at)`
+  - `type` ∈ {npc, faction, location, item}
+- `journal(id, campaign_id, session_date, entry_type, title, content_json, created_at)`
+  - `entry_type` ∈ {loot, encounter, npc_response, description, note}
+- Optionally `session(id, campaign_id, date, notes)`
+
+JSON schemas returned by generators
+- Common keys: `title`, `narrative`, `mechanics_or_hooks`, `tags`, `entities_created` (array with `type`, `name`, `summary`)
+- Loot adds `items` array with `name`, `rarity`, `gp_estimate` (optional), `quirk`
+- Encounter adds `difficulty_hint` ∈ {Easy, Medium, Hard}, `creatures` list with `name`, `count`, `twist`
+- NPC response adds `npc_name`, `stance` ∈ {friendly, neutral, hostile}, `goal`, `offer_or_consequence`
+- Description adds `sensory` with `sight`, `sound`, `smell`, `texture`, `weather_or_mood`
+
+Example prompt (system)
+```text
+You are a tabletop RPG assistant for a Dungeon Master. You take a short campaign context and a few base picks, then produce one context-aware result in STRICT JSON only. 
+Tone: match campaign tone. Avoid rules text or stat blocks; provide narrative hooks and practical DM notes. 
+Never invent world facts that contradict the provided context. If info is missing, stay generic.
+Return only valid JSON with the exact schema specified by the user. No markdown.
+```
+
+Example user payload to /gen/encounter
+```json
+{
+  "context": {
+    "party_level": 4,
+    "party_size": 4,
+    "biome": "coastal marsh",
+    "tone": "grim but hopeful",
+    "recent_events": "Party rescued a fisher from smugglers aligned with the Rust Tide.",
+    "known_npcs": ["Mira the tanner", "Captain Selvik (Rust Tide)"]
+  },
+  "base_picks": {
+    "creature_candidates": [
+      {"name": "Giant Frog", "tags":["beast","marsh"], "cr": 1},
+      {"name":"Swarm of Rot Grubs","tags":["vermin","marsh"], "cr": 1/2},
+      {"name":"Human Thug (Rust Tide)","tags":["humanoid","smuggler"], "cr": 1}
+    ]
+  },
+  "schema": {
+    "required": ["title","narrative","mechanics_or_hooks","tags","difficulty_hint","creatures","entities_created"]
+  }
+}
+```
+
+Example output (truncated)
+```json
+{
+  "title": "Wet Steps and Rusted Shadows",
+  "narrative": "In the reed-choked shallows, lantern light winks twice—then vanishes. A guttural croak echoes as slick shapes stir. A Rust Tide scout signals from a half-sunken skiff, hoping the marsh will swallow the interlopers...",
+  "mechanics_or_hooks": [
+    "Terrain: knee-deep water; moving quickly risks falling prone.",
+    "If the party mentions 'the rescued fisher', the scout turns cautious and calls for parley.",
+    "A hidden crate of contraband (salted eel, rust-stained coins) lies beneath the skiff."
+  ],
+  "tags": ["marsh","ambush","smugglers"],
+  "difficulty_hint": "Medium",
+  "creatures": [
+    {"name":"Giant Frog","count":2,"twist":"trained to snap at lantern light"},
+    {"name":"Rust Tide Scout (thug)","count":1,"twist":"whistle signals to distant oarsmen"}
+  ],
+  "entities_created": [
+    {"type":"item","name":"Contraband Crate","summary":"Soggy ledgers implicate Captain Selvik’s cell."}
+  ]
+}
+```
+
+Backend skeleton (FastAPI)
+```python
+# src/server.py
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import json, os, random
+import sqlite3
+from typing import Dict, Any
+
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+DB_PATH = os.getenv("DB_PATH", "data/dmuse.db")
+LLM_API_KEY = os.getenv("LLM_API_KEY")
+
+def db():
+    con = sqlite3.connect(DB_PATH)
+    con.row_factory = sqlite3.Row
+    return con
+
+class Context(BaseModel):
+    party_level: int
+    party_size: int
+    biome: str
+    tone: str
+    recent_events: str = ""
+    known_npcs: list[str] = []
+
+@app.post("/context/set")
+def set_context(ctx: Context):
+    con = db()
+    con.execute("""CREATE TABLE IF NOT EXISTS campaign(
+        id INTEGER PRIMARY KEY, name TEXT, party_level INT, party_size INT, biome TEXT, tone TEXT, recent_events_text TEXT
+    )""")
+    # Single-campaign MVP
+    con.execute("DELETE FROM campaign")
+    con.execute("INSERT INTO campaign(name, party_level, party_size, biome, tone, recent_events_text) VALUES(?,?,?,?,?,?)",
+                ("Default", ctx.party_level, ctx.party_size, ctx.biome, ctx.tone, ctx.recent_events))
+    con.commit()
+    con.close()
+    return {"status":"ok"}
+
+@app.get("/context/get")
+def get_context():
+    con = db()
+    cur = con.execute("SELECT * FROM campaign LIMIT 1")
+    row = cur.fetchone()
+    con.close()
+    return dict(row) if row else {}
+
+def load_table(name: str) -> Any:
+    with open(f"data/{name}.json","r",encoding="utf-8") as f:
+        return json.load(f)
+
+def filter_by_context(candidates, biome: str, party_level: int, window=1):
+    res = []
+    for c in candidates:
+        cr = c.get("cr", 1)
+        if biome and biome not in ",".join(c.get("tags", [])):
+            # loose match
+            if not any(biome_word in ",".join(c.get("tags", [])) for biome_word in biome.split()):
+                continue
+        if abs((cr if isinstance(cr,(int,float)) else 1) - party_level/2) <= window+0.5:
+            res.append(c)
+    return res or candidates[:5]
+
+def call_llm(system: str, user: str) -> Dict[str, Any]:
+    # Pseudo: plug your provider here. Keep temperature low (~0.2) and request JSON.
+    # return provider.chat(system=system, user=user, json=True)
+    raise NotImplementedError("Wire to your LLM provider")
+
+def generate(kind: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    # Base picks
+    if kind == "encounter":
+        enc = load_table("encounters")
+        pool = filter_by_context(enc, context["biome"], context["party_level"])
+        picks = random.sample(pool, k=min(2, len(pool)))
+        system = "You are a tabletop RPG assistant... STRICT JSON ..."
+        user = json.dumps({
+            "context": context,
+            "base_picks": {"creature_candidates": picks},
+            "schema": {"required": ["title","narrative","mechanics_or_hooks","tags","difficulty_hint","creatures","entities_created"]}
+        })
+    elif kind == "loot":
+        loot = load_table("loot")
+        pool = filter_by_context(loot, context["biome"], context["party_level"])
+        picks = random.sample(pool, k=min(3, len(pool)))
+        system = "You are a tabletop RPG assistant... STRICT JSON ..."
+        user = json.dumps({
+            "context": context,
+            "base_picks": {"loot_candidates": picks},
+            "schema": {"required": ["title","narrative","mechanics_or_hooks","tags","items","entities_created"]}
+        })
+    else:
+        # npc or description: simple pass-through with names.json etc.
+        names = load_table("names")
+        picks = random.sample(names, k=2)
+        system = "You are a tabletop RPG assistant... STRICT JSON ..."
+        user = json.dumps({
+            "context": context,
+            "base_picks": {"names": picks},
+            "schema": {"required": ["title","narrative","mechanics_or_hooks","tags","entities_created"]}
+        })
+    # Swap in your LLM; for prototype you can return mocked JSON to finish wiring quickly.
+    # resp = call_llm(system, user)
+    resp = {"title":"Mock", "narrative":"...", "mechanics_or_hooks":[], "tags":[kind], "difficulty_hint":"Medium" if kind=="encounter" else None, "creatures":[],"items":[],"entities_created":[]}
+    return resp
+
+@app.post("/gen/{kind}")
+def gen(kind: str):
+    ctx = get_context()
+    if not ctx:
+        raise HTTPException(400, "Set context first")
+    return generate(kind, ctx)
+
+@app.post("/journal/add")
+def add_journal(entry: Dict[str, Any]):
+    con = db()
+    con.execute("""CREATE TABLE IF NOT EXISTS journal(
+        id INTEGER PRIMARY KEY, campaign_id INT DEFAULT 1, session_date TEXT, entry_type TEXT, title TEXT, content_json TEXT, created_at TEXT
+    )""")
+    con.execute("INSERT INTO journal(session_date, entry_type, title, content_json, created_at) VALUES(date('now'),?,?,?,datetime('now'))",
+                (entry.get("entry_type","note"), entry.get("title",""), json.dumps(entry),))
+    con.commit()
+    con.close()
+    return {"status":"ok"}
+
+@app.get("/journal/list")
+def list_journal():
+    con = db()
+    cur = con.execute("SELECT * FROM journal ORDER BY id DESC LIMIT 50")
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+    return rows
+
+@app.post("/summary")
+def summary():
+    # Simple: concatenate titles + key lines. For demo, can call LLM to condense.
+    entries = list_journal()
+    text = "\n".join([f"- {e['title']}" for e in entries])
+    return {"markdown": f"# Session Summary\n\n{text}\n"}
+```
+
+Frontend skeleton (single page)
+```html
+<!-- src/index.html -->
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Dungeon Muse</title>
+    <style>
+      body { font-family: system-ui; max-width: 1000px; margin: 1rem auto; }
+      .grid { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 1rem; }
+      .card { border: 1px solid #ddd; padding: 0.75rem; border-radius: 8px; }
+      button { margin-right: 0.5rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Dungeon Muse</h1>
+    <div class="grid">
+      <div class="card">
+        <h3>Campaign Context</h3>
+        <label>Party Level <input id="lvl" type="number" value="4"></label><br/>
+        <label>Party Size <input id="size" type="number" value="4"></label><br/>
+        <label>Biome <input id="biome" placeholder="coastal marsh"></label><br/>
+        <label>Tone <input id="tone" placeholder="grim but hopeful"></label><br/>
+        <label>Recent Events</label><br/>
+        <textarea id="events" rows="4" placeholder="Rescued a fisher from Rust Tide..."></textarea><br/>
+        <button id="saveCtx">Save Context</button>
+        <div id="ctxStatus"></div>
+      </div>
+      <div class="card">
+        <h3>Generators</h3>
+        <button data-kind="encounter">Encounter</button>
+        <button data-kind="loot">Loot</button>
+        <button data-kind="npc">NPC Response</button>
+        <button data-kind="description">Description</button>
+        <div id="preview" style="margin-top:1rem;"></div>
+      </div>
+      <div class="card">
+        <h3>Journal</h3>
+        <div id="journal"></div>
+        <button id="summarize">Session Summary</button>
+        <pre id="summary"></pre>
+      </div>
+    </div>
+    <script>
+      const $ = (id)=>document.getElementById(id);
+      $('saveCtx').onclick = async ()=>{
+        const payload = {
+          party_level: +$('lvl').value, party_size: +$('size').value,
+          biome: $('biome').value, tone: $('tone').value, recent_events: $('events').value,
+          known_npcs: []
+        };
+        const res = await fetch('/context/set',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        $('ctxStatus').textContent = res.ok ? 'Saved.' : 'Failed.';
+      };
+      document.querySelectorAll('[data-kind]').forEach(btn=>{
+        btn.onclick = async ()=>{
+          const kind = btn.dataset.kind;
+          const res = await fetch(`/gen/${kind}`,{method:'POST'});
+          const data = await res.json();
+          const html = `
+            <h4>${data.title || 'Untitled'}</h4>
+            <p>${data.narrative || ''}</p>
+            <ul>${(data.mechanics_or_hooks||[]).map(x=>`<li>${x}</li>`).join('')}</ul>
+            <small>Tags: ${(data.tags||[]).join(', ')}</small><br/>
+            <button id="accept">Accept</button><button id="reroll">Reroll</button>
+          `;
+          $('preview').innerHTML = html;
+          $('accept').onclick = async ()=>{
+            await fetch('/journal/add',{method:'POST',headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({entry_type: kind, title: data.title || kind, content: data})});
+            loadJournal(); $('preview').innerHTML = '';
+          };
+          $('reroll').onclick = ()=>btn.onclick();
+        };
+      });
+      async function loadJournal(){
+        const res = await fetch('/journal/list'); const rows = await res.json();
+        $('journal').innerHTML = rows.map(r=>`<div><b>${r.entry_type}</b>: ${r.title}</div>`).join('');
+      }
+      $('summarize').onclick = async ()=>{
+        const res = await fetch('/summary',{method:'POST'}); const d = await res.json();
+        $('summary').textContent = d.markdown;
+      };
+      loadJournal();
+    </script>
+  </body>
+</html>
+```
+
+Seed tables (tiny)
+```json
+// data/encounters.json
+[
+  {"name":"Giant Frog","cr":1,"tags":["marsh","beast"]},
+  {"name":"Swarm of Rot Grubs","cr":0.5,"tags":["marsh","vermin"]},
+  {"name":"Bandit Lookout","cr":1,"tags":["coast","marsh","humanoid"]}
+]
+```
+```json
+// data/loot.json
+[
+  {"name":"Tarnished Silver Locket","rarity":"common","tags":["marsh","folk"]},
+  {"name":"Salt-Crusted Cutlass","rarity":"uncommon","tags":["coast","smuggler"]},
+  {"name":"Driftwood Totem","rarity":"common","tags":["marsh","spirit"]}
+]
+```
+```json
+// data/names.json
+["Mira","Selvik","Brann","Anya","Lysa","Thorne"]
+```
+
+Testing and validation plan
+- Unit tests:
+  - Given fixed context and base picks, the LLM returns valid JSON with required keys.
+  - JSON schema validator: on parse error, retry with “Return valid JSON only” instruction.
+- Integration tests:
+  - `/context/set` then `/gen/encounter` → response includes the biome or recent_events references.
+  - Accepting output adds a `journal` row; `/journal/list` shows it.
+  - `/summary` returns non-empty Markdown.
+- Manual UAT script (10 minutes):
+  - Set context (Level 4, coastal marsh, “grim but hopeful”).
+  - Generate Encounter; Accept.
+  - Generate Loot; Accept.
+  - Generate NPC Response; Reroll once; Accept.
+  - Click Session Summary; copy Markdown into a notes app.
+- Quality checklist:
+  - Output reflects context (biome, tone, recent events).
+  - No rules text/stat blocks; only narrative/mechanics-or-hooks.
+  - No contradictions with known NPCs; avoids naming duplicates unless intentional.
+  - Rerolls vary meaningfully; Accept updates future context if entities are created.
+- Performance:
+  - Target generation under 3–5 seconds per call.
+  - No more than one LLM call per click.
+
+Submission mapping (B1 Builders)
+- Repo structure
+```
+project/
+├ README.md
+├ LICENSE
+├ .gitignore
+├ requirements.txt
+├ src/
+│ ├ server.py
+│ ├ index.html
+│ └ prompts/
+│    ├ system.txt
+│    └ schemas.md
+├ data/
+│ ├ encounters.json
+│ ├ loot.json
+│ └ names.json
+├ tests/
+│ └ test_schemas.py
+└ docs/
+   └ ai-dev/
+      └ README.md
+```
+- README.md sections:
+  - Problem: DMs want to be surprised; random tables lack context.
+  - Outcome: context-aware generators + journaling; 60-sec flows.
+  - Demo: GIF/5-min video showing set context → generate → accept → summary.
+  - Stack: FastAPI, SQLite, SPA HTML/JS, LLM provider.
+  - Install/Run: venv, `pip install -r requirements.txt`, `uvicorn src.server:app --reload`, open `src/index.html` via `http://localhost:8000` if you serve it, or serve static.
+- docs/ai-dev/README.md:
+  - AI Tools: model, temperature, JSON mode.
+  - Key prompts and iterations.
+  - Decisions: prefilter via tags + CR before LLM; low-temp JSON; tiny schema per generator.
+  - Reflection: What worked (context grounding), what failed (LLM JSON drift), next steps (seed control, richer state, multi-campaign, authentication).
+
+Timeboxed build plan (120 minutes)
+- 0–15: Scaffold repo; create `index.html`, `server.py`; run FastAPI; add CORS.
+- 15–35: Implement `/context/set|get`; create SQLite init.
+- 35–55: Implement `/gen/{kind}` with base-table filtering and mocked JSON first.
+- 55–70: Wire LLM call (or keep mock if time is tight); ensure strict JSON handling.
+- 70–85: Journal endpoints `/journal/add|list`; accept flow in UI.
+- 85–100: Session summary endpoint and UI export (Markdown).
+- 100–110: Seed minimal JSON tables; refine prompt; test 3 flows.
+- 110–120: Record demo video; complete README and docs/ai-dev with prompts and reflections.
+
+Stretch goals (if you have extra time)
+- Determinism: add a `seed` param to pick base candidates; set model `seed` if provider supports it.
+- Memory: when `entities_created` includes a new NPC, add to `entities` and reference in subsequent prompts.
+- Export: download session summary as `.md`.
+- Safety dials: tone slider for gore/violence; SFW toggle.
+- Co-DM share link (later): simple read-only session view.
+
+Verdict
+- This idea is strong for the “individual” project. It showcases AI as a co-DM, keeps outputs grounded in context, and is feasible to prototype quickly while still letting you explain prompt design, data grounding, and testing.
+
+If you want, I can:
+- Generate the exact prompt files and test cases for the four generators.
+- Provide a minimal JSON schema validator and retry loop snippet for the LLM output.
