@@ -1,4 +1,4 @@
-# dnd_gm_assist
+# dnd_gm_assist (Individual use)
 
 ## Overview
 
