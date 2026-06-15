@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DM Assist</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Cinzel', 'Georgia', 'serif'],
+            body:    ['Crimson Pro', 'Georgia', 'serif'],
+            ui:      ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #92400e; border-radius: 9999px; }
+  </style>
+</head>
+<body class="h-full bg-stone-950 text-stone-300 font-ui overflow-hidden flex flex-col">
+
+  <!-- Toast -->
+  <div id="toast" role="alert" aria-live="polite"
+    class="fixed bottom-5 right-5 z-50 px-4 py-2 rounded-lg text-sm font-medium shadow-xl
+           bg-amber-700 text-white pointer-events-none transition-opacity duration-300"
+    style="opacity:0"></div>
+
+  <!-- Header -->
+  <header class="flex items-center gap-3 h-12 px-6 bg-stone-900 border-b border-stone-800 shrink-0">
+    <h1 class="font-display text-amber-400 text-base tracking-widest shrink-0">⚔ DM Assist</h1>
+    <span class="text-stone-700 shrink-0">|</span>
+    <select id="campaign-select"
+      class="bg-stone-800 border border-stone-700 rounded px-2 py-1 text-stone-200 text-sm
+             focus:outline-none focus:ring-1 focus:ring-amber-600 focus:border-amber-600
+             min-w-0 flex-1 max-w-xs cursor-pointer transition-colors">
+    </select>
+    <button id="new-campaign-btn"
+      class="ml-auto shrink-0 text-xs text-stone-500 hover:text-amber-400 border border-stone-700
+             hover:border-amber-700/60 rounded px-3 py-1 transition-colors">
+      + New Campaign
+    </button>
+  </header>
+
+  <!-- New Campaign Panel (hidden by default) -->
+  <div id="new-campaign-panel" class="hidden shrink-0 border-b border-stone-800 bg-stone-900/90 px-6 py-4">
+    <form id="new-campaign-form" class="space-y-3">
+      <p class="font-display text-xs text-amber-500 tracking-widest uppercase">New Campaign</p>
+      <div class="grid grid-cols-3 gap-3">
+        <label class="block">
+          <span class="text-xs text-stone-500 uppercase tracking-wider">Name <span class="text-amber-600">*</span></span>
+          <input id="new-name" type="text" placeholder="The Obsidian Key" autocomplete="off"
+            class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-1.5
+                   text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                   focus:border-amber-600 transition-colors" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-stone-500 uppercase tracking-wider">System</span>
+          <input id="new-system" type="text" placeholder="D&amp;D 5e"
+            class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-1.5
+                   text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                   focus:border-amber-600 transition-colors" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-stone-500 uppercase tracking-wider">Setting</span>
+          <input id="new-setting" type="text" placeholder="Swamp frontier of a fallen kingdom…"
+            class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-1.5
+                   text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                   focus:border-amber-600 transition-colors" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-stone-500 uppercase tracking-wider">Tone</span>
+          <input id="new-tone" type="text" placeholder="dark &amp; gritty, whimsical…"
+            class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-1.5
+                   text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                   focus:border-amber-600 transition-colors" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-stone-500 uppercase tracking-wider">Party Level</span>
+          <input id="new-party_level" type="number" min="1" max="20" placeholder="1"
+            class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-1.5
+                   text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                   focus:border-amber-600 transition-colors" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-stone-500 uppercase tracking-wider">Starting Location</span>
+          <input id="new-current_location" type="text" placeholder="The village of…"
+            class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-1.5
+                   text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                   focus:border-amber-600 transition-colors" />
+        </label>
+      </div>
+      <div class="flex justify-end items-center gap-3 pt-1">
+        <p id="new-campaign-error" class="text-red-400 text-sm hidden mr-auto"></p>
+        <button type="button" id="cancel-new-btn"
+          class="text-sm text-stone-400 hover:text-stone-200 px-4 py-1.5 rounded transition-colors">
+          Cancel
+        </button>
+        <button type="submit"
+          class="bg-amber-700 hover:bg-amber-600 active:bg-amber-500 text-white
+                 font-medium text-sm px-5 py-1.5 rounded transition-colors">
+          Create Campaign
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Three-column console (flex-1 fills remaining height) -->
+  <div class="flex flex-1 overflow-hidden min-h-0">
+
+    <!-- ── LEFT · Campaign State ─────────────────── -->
+    <aside class="w-72 shrink-0 border-r border-stone-800 overflow-y-auto bg-stone-900/50 p-4 space-y-4">
+      <h2 class="font-display text-xs text-amber-500 tracking-widest uppercase">Campaign State</h2>
+
+      <label class="block">
+        <span class="text-xs text-stone-500 uppercase tracking-wider">Party Level</span>
+        <input id="field-party_level" type="number" min="1" max="20"
+          class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-1.5
+                 text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                 focus:border-amber-600 transition-colors" />
+      </label>
+
+      <label class="block">
+        <span class="text-xs text-stone-500 uppercase tracking-wider">Location</span>
+        <input id="field-current_location" type="text"
+          class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-1.5
+                 text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                 focus:border-amber-600 transition-colors" />
+      </label>
+
+      <label class="block">
+        <span class="text-xs text-stone-500 uppercase tracking-wider">Tone</span>
+        <input id="field-tone" type="text" placeholder="dark &amp; gritty, whimsical…"
+          class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-1.5
+                 text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                 focus:border-amber-600 transition-colors" />
+      </label>
+
+      <label class="block">
+        <span class="text-xs text-stone-500 uppercase tracking-wider">Recent Events</span>
+        <textarea id="field-recent_events" rows="5"
+          placeholder="What just happened…"
+          class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-2
+                 text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                 focus:border-amber-600 resize-none leading-relaxed transition-colors"></textarea>
+      </label>
+
+      <label class="block">
+        <span class="text-xs text-stone-500 uppercase tracking-wider">Known NPCs</span>
+        <textarea id="field-known_npcs" rows="5"
+          placeholder="Names, roles, secrets…"
+          class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-2
+                 text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                 focus:border-amber-600 resize-none leading-relaxed transition-colors"></textarea>
+      </label>
+
+      <button id="save-state-btn"
+        class="w-full bg-stone-700 hover:bg-stone-600 active:bg-stone-500 text-stone-200
+               font-medium text-sm py-2 rounded transition-colors">
+        Save State
+      </button>
+    </aside>
+
+    <!-- ── CENTRE · Generate ─────────────────────── -->
+    <main class="flex-1 overflow-y-auto p-6 space-y-6 min-w-0">
+      <h2 class="font-display text-xs text-amber-500 tracking-widest uppercase">Generate</h2>
+
+      <!-- Kind picker -->
+      <div class="flex flex-wrap gap-2" role="group" aria-label="Content kind">
+        <span class="relative inline-flex">
+          <input type="radio" name="kind" id="kind-encounter" value="encounter" class="peer sr-only" checked />
+          <label for="kind-encounter"
+            class="cursor-pointer px-4 py-1.5 rounded-full border border-stone-600 text-stone-400 text-sm
+                   font-medium transition-colors hover:text-stone-200 hover:border-stone-500
+                   peer-checked:border-red-700 peer-checked:bg-red-950 peer-checked:text-red-200">
+            encounter
+          </label>
+        </span>
+        <span class="relative inline-flex">
+          <input type="radio" name="kind" id="kind-loot" value="loot" class="peer sr-only" />
+          <label for="kind-loot"
+            class="cursor-pointer px-4 py-1.5 rounded-full border border-stone-600 text-stone-400 text-sm
+                   font-medium transition-colors hover:text-stone-200 hover:border-stone-500
+                   peer-checked:border-yellow-700 peer-checked:bg-yellow-950 peer-checked:text-yellow-200">
+            loot
+          </label>
+        </span>
+        <span class="relative inline-flex">
+          <input type="radio" name="kind" id="kind-npc" value="npc" class="peer sr-only" />
+          <label for="kind-npc"
+            class="cursor-pointer px-4 py-1.5 rounded-full border border-stone-600 text-stone-400 text-sm
+                   font-medium transition-colors hover:text-stone-200 hover:border-stone-500
+                   peer-checked:border-blue-700 peer-checked:bg-blue-950 peer-checked:text-blue-200">
+            npc
+          </label>
+        </span>
+        <span class="relative inline-flex">
+          <input type="radio" name="kind" id="kind-description" value="description" class="peer sr-only" />
+          <label for="kind-description"
+            class="cursor-pointer px-4 py-1.5 rounded-full border border-stone-600 text-stone-400 text-sm
+                   font-medium transition-colors hover:text-stone-200 hover:border-stone-500
+                   peer-checked:border-emerald-700 peer-checked:bg-emerald-950 peer-checked:text-emerald-200">
+            description
+          </label>
+        </span>
+      </div>
+
+      <!-- DM input -->
+      <div class="space-y-2">
+        <label for="dm-input" class="text-xs text-stone-500 uppercase tracking-wider">Describe the moment</label>
+        <textarea id="dm-input" rows="3"
+          placeholder="e.g. The party opens the witch's chest after defeating her in the swamp…"
+          class="w-full bg-stone-900 border border-stone-700 rounded-lg px-4 py-3
+                 text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                 focus:border-amber-600 resize-none leading-relaxed transition-colors"></textarea>
+        <div class="flex items-center gap-4">
+          <button id="generate-btn"
+            class="bg-amber-700 hover:bg-amber-600 active:bg-amber-500
+                   disabled:opacity-50 disabled:cursor-not-allowed
+                   text-white font-medium text-sm py-2 px-6 rounded-lg transition-colors">
+            Generate
+          </button>
+          <p id="error-msg" class="text-red-400 text-sm hidden"></p>
+        </div>
+      </div>
+
+      <!-- Result (hidden until generated) -->
+      <section id="result-section" class="hidden space-y-4 border border-stone-700/50 rounded-xl p-5 bg-stone-900/60">
+        <h3 class="font-display text-xs text-amber-500 tracking-widest uppercase">Result</h3>
+
+        <label class="block">
+          <span class="text-xs text-stone-500 uppercase tracking-wider">Title</span>
+          <input id="res-title" type="text"
+            class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-1.5
+                   text-amber-100 text-sm font-semibold focus:outline-none focus:ring-1
+                   focus:ring-amber-600 focus:border-amber-600 transition-colors" />
+        </label>
+
+        <label class="block">
+          <span class="text-xs text-stone-500 uppercase tracking-wider">Content</span>
+          <textarea id="res-content" rows="5"
+            class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-2
+                   text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                   focus:border-amber-600 resize-none leading-relaxed transition-colors"></textarea>
+        </label>
+
+        <div class="grid grid-cols-3 gap-4">
+          <label class="block">
+            <span class="text-xs text-stone-500 uppercase tracking-wider">Mechanic</span>
+            <textarea id="res-mechanic" rows="4"
+              class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-2
+                     text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                     focus:border-amber-600 resize-none leading-relaxed transition-colors"></textarea>
+          </label>
+          <label class="block">
+            <span class="text-xs text-red-400/80 uppercase tracking-wider">Secret · DM only</span>
+            <textarea id="res-secret" rows="4"
+              class="mt-1 w-full bg-stone-800 border border-red-900/50 rounded px-3 py-2
+                     text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-red-700
+                     focus:border-red-700 resize-none leading-relaxed transition-colors"></textarea>
+          </label>
+          <label class="block">
+            <span class="text-xs text-stone-500 uppercase tracking-wider">Connects To</span>
+            <textarea id="res-connects_to" rows="4"
+              class="mt-1 w-full bg-stone-800 border border-stone-700 rounded px-3 py-2
+                     text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-amber-600
+                     focus:border-amber-600 resize-none leading-relaxed transition-colors"></textarea>
+          </label>
+        </div>
+
+        <div class="flex justify-end">
+          <button id="save-btn" disabled
+            class="bg-amber-800 hover:bg-amber-700 active:bg-amber-600
+                   disabled:opacity-40 disabled:cursor-not-allowed
+                   text-white font-medium text-sm py-2 px-6 rounded-lg transition-colors">
+            Save to Log
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- ── RIGHT · Journal + Session Log ───────────── -->
+    <aside class="w-80 shrink-0 border-l border-stone-800 overflow-y-auto bg-stone-900/50 p-4 space-y-4">
+
+      <!-- Journal -->
+      <div class="space-y-2">
+        <h2 class="font-display text-xs text-amber-500 tracking-widest uppercase">Journal</h2>
+        <textarea id="note-input" rows="3"
+          placeholder="Quick note for the log…"
+          class="w-full bg-stone-800 border border-stone-700 rounded px-3 py-2
+                 text-stone-200 text-sm focus:outline-none focus:ring-1 focus:ring-stone-500
+                 focus:border-stone-500 resize-none leading-relaxed transition-colors"></textarea>
+        <button id="save-note-btn"
+          class="w-full bg-stone-700 hover:bg-stone-600 active:bg-stone-500 text-stone-200
+                 font-medium text-sm py-1.5 rounded transition-colors">
+          Save Note
+        </button>
+      </div>
+
+      <hr class="border-stone-800" />
+
+      <!-- Session Log -->
+      <div class="space-y-3">
+        <h2 class="font-display text-xs text-amber-500 tracking-widest uppercase">Session Log</h2>
+        <div id="log-list" class="space-y-3">
+          <p class="text-stone-600 text-sm italic">Loading…</p>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
