@@ -15,6 +15,7 @@
 ---
 
 ## Demo
+[Youtube demo](https://youtu.be/hdoOrQmwY74)
 1. Load a campaign, or create a new one, from the campaign selector.
 2. Review/edit the campaign state — party level, location, tone, recent events, known NPCs.
 3. Pick a kind (encounter / loot / npc / description) and optionally describe the moment.
