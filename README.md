@@ -1,20 +1,20 @@
-# dnd_gm_assist (Individual use)
+# 🐉dnd_gm_assist (Individual use)
 
 ## Overview
 
 ### Problem
-- **Who is affected?** A tabletop RPG Dungeon Master — specifically the "forever DM" who always runs the game and rarely gets to be surprised by it.
+- **🗣️Who is affected?** A tabletop RPG Dungeon Master — specifically the "forever DM" who always runs the game and rarely gets to be surprised by it.
 
-- **What is the issue?** A DM improvises constantly: encounters, loot, NPC reactions, descriptions. The usual aid is random tables, but they are **context-blind** — they will offer a desert ambush in a frozen cavern, or generic loot that ignores the story so far. Keeping improvised content consistent with the campaign's location, tone, party level, and recent events is manual work, and it is hard to be both consistent *and* surprised.
+- **🎲What is the issue?** A DM improvises constantly: encounters, loot, NPC reactions, descriptions. The usual aid is random tables, but they are **context-blind** — they will offer a desert ambush in a frozen cavern, or generic loot that ignores the story so far. Keeping improvised content consistent with the campaign's location, tone, party level, and recent events is manual work, and it is hard to be both consistent *and* surprised.
 
-### Outcome
+### 📜Outcome
 - A single-user web app that holds a campaign's live **state** and generates **context-aware** content — an encounter, a piece of loot, an NPC (or their spoken response), or read-aloud description — that stays consistent with the established world. The current state plus a rolling session log are injected into every prompt, so generated loot can reference recent events and NPCs remember the story. Generations and the DM's own journal notes are saved to a shared session log, and that log feeds back into future generation. Multiple campaigns can be stored and loaded.
 
 - This is the **individual-use** companion to a team/organisational project (`class_assist`). Both run the same engine — generate → validate → persist → history — repointed to a different domain.
 
 ---
 
-## Demo
+## 🏅Demo
 [Youtube demo](https://youtu.be/hdoOrQmwY74)
 1. Load a campaign, or create a new one, from the campaign selector.
 2. Review/edit the campaign state — party level, location, tone, recent events, known NPCs.
@@ -28,7 +28,7 @@
 
 ---
 
-## Technology Stack
+## 🗡️Technology Stack
 ### Frontend
 - HTML + vanilla JavaScript (no build step), Tailwind via CDN.
 
@@ -55,5 +55,5 @@ Load or create a campaign → edit its state → pick a kind, optionally describ
 - `docs/ai-dev/` — AI usage log.
 - `Extra/` — full AI chat-session logs.
 
-## Data & Safety
+## 🛡️Data & Safety
 All campaign data is fictional, so there is no personal-data risk. If you later ground the AI in your own source material (a planned feature), do not commit copyrighted sourcebooks or their extracted text — use your own homebrew or the openly-licensed D&D SRD. The live database is gitignored.
